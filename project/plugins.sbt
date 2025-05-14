@@ -7,3 +7,5 @@ addSbtPlugin("org.typelevel"      % "sbt-typelevel"          % Versions.SbtTypel
 addSbtPlugin("org.typelevel"      % "sbt-typelevel-site"     % Versions.SbtTypelevelVersion)
 addSbtPlugin("org.typelevel"      % "sbt-typelevel-scalafix" % Versions.SbtTypelevelVersion)
 addSbtPlugin("pl.project13.scala" % "sbt-jmh"                % "0.4.7")
+
+addSbtPlugin("com.codecommit" % "sbt-github-packages" % "0.5.3")

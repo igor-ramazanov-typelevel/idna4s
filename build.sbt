@@ -1,10 +1,11 @@
 import org.typelevel.idna4s.build._
+import org.typelevel.sbt.gha.WorkflowStep.Run
+import org.typelevel.sbt.gha.WorkflowStep.Sbt
 
 ThisBuild / tlBaseVersion := "0.1"
 
 val UnicodeVersion: String = "15.0.0"
 
-val Scala212                    = "2.12.17"
 val Scala213                    = "2.13.16"
 val Scala3                      = "3.3.5"
 def DefaultScalaVersion: String = Scala213
@@ -18,7 +19,7 @@ val munitV           = "1.0.0"
 val munitScalacheckV = "1.1.0"
 val scalacheckV      = "1.18.1"
 
-ThisBuild / crossScalaVersions := Seq(Scala212, Scala213, Scala3)
+ThisBuild / crossScalaVersions := Seq(Scala213, Scala3)
 ThisBuild / scalaVersion       := Scala213
 ThisBuild / developers += tlGitHubDev("isomarcte", "David Strawn")
 ThisBuild / licenses  := List(License.MIT)
@@ -85,12 +86,39 @@ ThisBuild / githubWorkflowGeneratedCI += WorkflowJob(
     WorkflowStep.Checkout,
     WorkflowStep.Sbt(commands =
       List("reload plugins", "headerCheckAll", "scalafixAll --check", "test"))),
-  scalas = List(Scala212)
+  scalas = List()
 )
 
 ThisBuild / githubWorkflowEnv ++= Map(
   "JAVA_TOOL_OPTIONS" -> "-XX:+UseG1GC -XX:MaxHeapFreeRatio=20 -Xmx4G -XX:MinHeapFreeRatio=10 -XX:+UseStringDeduplication"
 )
+
+ThisBuild / githubOwner                    := "igor-ramazanov-typelevel"
+ThisBuild / githubRepository               := "idna4s"
+ThisBuild / githubWorkflowPublishPreamble  := List.empty
+ThisBuild / githubWorkflowUseSbtThinClient := true
+ThisBuild / githubWorkflowPublish := List(
+  Run(
+    commands = List("echo \"$PGP_SECRET\" | gpg --import"),
+    id = None,
+    name = Some("Import PGP key"),
+    env = Map("PGP_SECRET" -> "${{ secrets.PGP_SECRET }}"),
+    params = Map(),
+    timeoutMinutes = None,
+    workingDirectory = None
+  ),
+  Sbt(
+    commands = List("+ publish"),
+    id = None,
+    name = Some("Publish"),
+    cond = None,
+    env = Map("GITHUB_TOKEN" -> "${{ secrets.GB_TOKEN }}"),
+    params = Map.empty,
+    timeoutMinutes = None,
+    preamble = true
+  )
+)
+ThisBuild / gpgWarnOnFailure := false
 
 // Projects
 
@@ -147,7 +175,10 @@ lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
           CodeGen.generate(_, UnicodeVersion)
         )
         .taskValue
-    )
+    ),
+    publishTo                 := githubPublishTo.value,
+    publishConfiguration      := publishConfiguration.value.withOverwrite(true),
+    publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true)
   )
 
 lazy val scalacheck = crossProject(JVMPlatform, JSPlatform, NativePlatform)
@@ -170,7 +201,10 @@ lazy val scalacheck = crossProject(JVMPlatform, JSPlatform, NativePlatform)
         "org.typelevel.idna4s.scalacheck.all."
       ).map(value => s"import ${value}${wildcardImport.value}").mkString("\n")
     },
-    consoleQuick / initialCommands := ""
+    consoleQuick / initialCommands := "",
+    publishTo                      := githubPublishTo.value,
+    publishConfiguration           := publishConfiguration.value.withOverwrite(true),
+    publishLocalConfiguration      := publishLocalConfiguration.value.withOverwrite(true)
   )
   .dependsOn(core)
 
